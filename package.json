@@ -1,0 +1,37 @@
+{
+  "name": "contracts-api-automation",
+  "version": "1.0.0",
+  "description": "Automated API test suite for the Saudi AZM Digital Contracts API (HMAC-signed), built with Playwright Test + TypeScript.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:unit": "playwright test tests/unit",
+    "test:inbound": "playwright test tests/inbound",
+    "test:entity": "playwright test tests/entity",
+    "test:e2e": "playwright test tests/e2e",
+    "test:smoke": "playwright test --grep @smoke",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit",
+    "gen:fixture": "node scripts/generate-sample-pdf.mjs"
+  },
+  "keywords": [
+    "contracts",
+    "api",
+    "automation",
+    "playwright",
+    "hmac"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.16.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.6.0"
+  }
+}
