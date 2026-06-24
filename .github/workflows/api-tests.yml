@@ -3,6 +3,13 @@ name: Contracts API Tests
 on:
   push:
     branches: [main]
+    # Avoid an infinite loop: the auto-published report commit only touches
+    # report/**, so ignoring that path stops it from re-triggering this run.
+    paths-ignore:
+      - 'report/**'
+  schedule:
+    # Daily at 03:00 UTC (06:00 Asia/Riyadh). Emails the HTML report.
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       environment:
@@ -16,6 +23,10 @@ on:
 concurrency:
   group: api-tests-${{ github.ref }}
   cancel-in-progress: true
+
+# Allow the job to commit the refreshed HTML report back to the repo.
+permissions:
+  contents: write
 
 jobs:
   test:
@@ -36,6 +47,8 @@ jobs:
       NAFATH_TRACE_ID: ${{ secrets.NAFATH_TRACE_ID }}
       EXISTING_CONTRACT_NUMBER: ${{ secrets.EXISTING_CONTRACT_NUMBER }}
       EXISTING_BENEFICIARY_NID: ${{ secrets.EXISTING_BENEFICIARY_NID }}
+      # Email — set these secrets to enable the daily HTML-report email.
+      REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
     steps:
       - uses: actions/checkout@v4
 
@@ -75,6 +88,44 @@ jobs:
           name: junit-results
           path: test-results/
           retention-days: 14
+
+      - name: Publish HTML report to repo (overwrite latest)
+        if: ${{ !cancelled() }}
+        run: |
+          node scripts/publish-report.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add report/index.html
+          if git diff --cached --quiet; then
+            echo "Report unchanged — nothing to commit."
+          else
+            git commit -m "Update HTML execution report (run ${GITHUB_RUN_ID}) [skip ci]"
+            git push origin HEAD:${GITHUB_REF_NAME} || (git pull --rebase origin ${GITHUB_REF_NAME} && git push origin HEAD:${GITHUB_REF_NAME})
+          fi
+
+      - name: Email HTML report (daily / on failure)
+        if: ${{ !cancelled() && env.REPORT_EMAIL_TO != '' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || failure()) }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Contracts API Tests — ${{ job.status }} — ${{ env.CONTRACTS_ENV }} (run ${{ github.run_id }})"
+          to: ${{ secrets.REPORT_EMAIL_TO }}
+          from: Contracts API CI <${{ secrets.SMTP_USERNAME }}>
+          body: |
+            Contracts API automated test report.
+
+            Status:      ${{ job.status }}
+            Environment: ${{ env.CONTRACTS_ENV }}
+            Trigger:     ${{ github.event_name }}
+            Commit:      ${{ github.sha }}
+            Run log:     ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            The full Playwright HTML report is attached (open index.html in a browser).
+          attachments: report/index.html
 
       - name: Notify Slack on failure
         if: ${{ failure() && env.SLACK_WEBHOOK_URL != '' }}
