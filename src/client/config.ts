@@ -38,8 +38,18 @@ function originToHost(origin: string): string {
   return origin.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 }
 
-const SANDBOX_ORIGIN = process.env.SANDBOX_BASE_URL ?? 'https://api-sb.contracts.com.sa';
-const UAT_ORIGIN = process.env.UAT_BASE_URL ?? 'https://api-uat.contracts.com.sa';
+/**
+ * Read an env var, treating blank/whitespace-only as unset. CI injects
+ * `${{ vars.X }}` as an empty string when the repo variable is undefined, so a
+ * plain `??` fallback would yield "" and break URL construction.
+ */
+function envOr(name: string, fallback: string): string {
+  const v = process.env[name];
+  return v && v.trim() ? v.trim() : fallback;
+}
+
+const SANDBOX_ORIGIN = envOr('SANDBOX_BASE_URL', 'https://api-sb.contracts.com.sa');
+const UAT_ORIGIN = envOr('UAT_BASE_URL', 'https://api-uat.contracts.com.sa');
 
 const ENVIRONMENTS: Record<EnvName, ContractsEnvConfig> = {
   sandbox: {
