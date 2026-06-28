@@ -39,8 +39,16 @@ export default defineConfig({
       testMatch: /tests\/unit\/.*\.spec\.ts/,
     },
     {
+      // Single account-health probe. The `api` project depends on it, so a
+      // deactivated company fails fast here with one clear message instead of
+      // scattered red across every data-dependent test.
+      name: 'health',
+      testMatch: /tests\/setup\/account-health\.setup\.ts/,
+    },
+    {
       name: 'api',
-      testIgnore: /tests\/unit\/.*\.spec\.ts/,
+      testIgnore: [/tests\/unit\/.*\.spec\.ts/, /tests\/setup\/.*/],
+      dependencies: ['health'],
     },
   ],
 });

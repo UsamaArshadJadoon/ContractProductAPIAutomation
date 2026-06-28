@@ -38,4 +38,6 @@ export const ErrorCodes = {
   STATUS_NOT_FOUND: 'E0203',
   ACTION_NOT_ALLOWED: 'E0204',
   INVALID_FIELDS_OR_VALUES: 'E0207',
+  /** "Company does not exist" — the account/company is not provisioned on the env. */
+  COMPANY_NOT_FOUND: 'E0022',
 } as const;
